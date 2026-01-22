@@ -1,8 +1,8 @@
 # Invoice Approval Workflow (Light Challenge)
 
-This repository implements a configurable invoice approval routing workflow.
+This repository implements an invoice approval routing workflow.
 
-The core idea is that *workflow rules are data*, not hardcoded `if/else` logic. A workflow is represented as a small decision graph (nodes + transitions). You can swap the active workflow at runtime by POSTing a new definition.
+The core idea is that *workflow rules are data*, not hardcoded `if/else` logic. A workflow is represented as a small decision graph (nodes + transitions). You can swap the active workflow at runtime by a POST request to a new definition.
 
 ---
 
@@ -20,6 +20,15 @@ This matches the challenge requirements:
 - Inputs: invoice amount, department, manager approval requirement
 - Output: list of selected approvers
 - Notifications: printed to console (Slack/email message text)
+
+## Database model design (proposed)
+
+Although this challenge uses in-memory repositories, the following relational model supports both:
+
+- **Workflow configuration** (editable without code changes)
+- **Workflow execution audit trail** (what happened for each invoice)
+  
+![code_exercise_diagram](https://github.com/ZeeshanFaisal10/LightChallenge/blob/main/mermaid-diagram-2026-01-22-123238.png?raw=true)
 
 ---
 
@@ -128,105 +137,6 @@ Typical flow:
 1. Enter amount.
 2. Pick a department (populated from `GET /departments`).
 3. Toggle manager approval requirement.
-4. Tap “Execute Workflow”.
-5. Display the `selectedApprovers` list.
-
----
-
-## Database model design (proposed)
-
-Although this challenge uses in-memory repositories, the following relational model supports both:
-
-- **Workflow configuration** (editable without code changes)
-- **Workflow execution audit trail** (what happened for each invoice)
-
-### ER diagram
-
-![ERD](db_design_erd.png)
-
-(Generated version is included in this repo; see `db_design_erd.png`.)
-
-### Tables
-
-#### Workflow configuration
-- `workflow_definition`
-  - A versioned workflow (only one active at a time, or use flags/tenancy).
-- `workflow_node`
-  - Each node in the workflow graph.
-- `workflow_transition`
-  - Directed edges between nodes with YES/NO outcomes.
-- `approver_directory`
-  - Maps `target_key` (logical role/team) to one or more approver identities.
-
-#### Workflow execution (audit)
-- `workflow_execution`
-  - One row per invoice execution request (inputs + status).
-- `workflow_execution_step`
-  - Trace of each decision/action visited (outcome chosen, action selected).
-- `notification_log`
-  - Optional record of what was “sent” (channel, recipient, timestamp, status).
-
----
-
-## Build & run
-
-### Backend
-```bash
-cd backend
-./gradlew clean build
-./gradlew run
-```
-
-The Dropwizard app registers:
-- `/workflow`
-- `/departments`
-- `/workflow-definitions`
-
-### Mobile app
-```bash
-cd app
-npm install
-npm run ios
-```
-
----
-
-## Example curl
-
-Execute workflow:
-```bash
-curl -X POST http://localhost:8080/workflow \
-  -H "Content-Type: application/json" \
-  -d '{"invoiceAmount":12000,"department":"Marketing","managerApprovalRequired":true}'
-```
-
-Get departments:
-```bash
-curl http://localhost:8080/departments
-```
-
-Get current workflow:
-```bash
-curl http://localhost:8080/workflow-definitions
-```
-
-Replace workflow:
-```bash
-curl -X POST http://localhost:8080/workflow-definitions \
-  -H "Content-Type: application/json" \
-  -d @new_workflow.json
-```
-
----
-
-## Real-world improvements (if extending beyond the exercise)
-
-- Multi-tenant workflows (per customer/organisation).
-- Role-based access to update workflow definitions.
-- Versioning and rollbacks for workflow changes.
-- Persistent execution logs + searchable audit UI.
-- Richer operators (IN, regex, ranges) and composite conditions (AND/OR groups).
-- Integration adapters for Slack, email, ticketing systems.
-- Idempotency keys (avoid duplicate notifications on retries).
-- Observability: metrics per path, latency, and failure rates.
+4. Tap “Submit Workflow”.
+5. Displays the `selectedApprovers` list.
 
